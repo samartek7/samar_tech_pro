@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 void main() {
   runApp(const SamarTechApp());
 }
+
 class SamarTechApp extends StatelessWidget {
   const SamarTechApp({super.key});
 
@@ -183,6 +184,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
+
 // ================= الصفحة الرئيسية =================
 
 class HomePage extends StatefulWidget {
@@ -209,6 +211,12 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _cardProfile = TextEditingController();
 
   final List<Map<String, String>> _createdCards = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAll();
+  }
 
   Future<void> _loadAll() async {
     setState(() => _loading = true);
@@ -298,18 +306,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _loadAll();
-  }
-
-  @override
   void dispose() {
     _cardCount.dispose();
     _cardProfile.dispose();
     super.dispose();
   }
-}
+
   @override
   Widget build(BuildContext context) {
     final pages = [
@@ -516,4 +518,3 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
