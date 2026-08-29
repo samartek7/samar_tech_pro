@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:routeros_api/routeros_api.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 
 void main() {
   runApp(const SamarTechApp());
@@ -61,10 +58,11 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      // التعديل: استخدم named parameters
       final client = RouterOSClient(
-        _ip.text.trim(),
-        _user.text.trim(),
-        _pass.text,
+        host: _ip.text.trim(),
+        user: _user.text.trim(),
+        password: _pass.text,
         port: 8728,
       );
 
@@ -84,7 +82,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _msg = 'فشل الاتصال بالراوتر';
+          _msg = 'فشل الاتصال بالراوتر: $e';
         });
       }
     } finally {
@@ -119,9 +117,12 @@ class _LoginPageState extends State<LoginPage> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Card(
+              elevation: 8,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
                       Icons.router,
@@ -142,6 +143,7 @@ class _LoginPageState extends State<LoginPage> {
                       controller: _ip,
                       decoration: const InputDecoration(
                         labelText: 'IP المايكروتك',
+                        prefixIcon: Icon(Icons.router),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -150,6 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                       controller: _user,
                       decoration: const InputDecoration(
                         labelText: 'اسم المستخدم',
+                        prefixIcon: Icon(Icons.person),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -159,21 +162,23 @@ class _LoginPageState extends State<LoginPage> {
                       obscureText: true,
                       decoration: const InputDecoration(
                         labelText: 'كلمة المرور',
+                        prefixIcon: Icon(Icons.lock),
                         border: OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 20),
                     _loading
-                        ? const CircularProgressIndicator()
+                       ? const CircularProgressIndicator()
                         : SizedBox(
                             width: double.infinity,
+                            height: 50,
                             child: ElevatedButton(
                               onPressed: _connect,
-                              child: const Text('اتصال'),
+                              child: const Text('اتصال', style: TextStyle(fontSize: 18)),
                             ),
                           ),
                     const SizedBox(height: 10),
-                    Text(_msg),
+                    Text(_msg, style: const TextStyle(color: Colors.red)),
                   ],
                 ),
               ),
@@ -222,12 +227,10 @@ class _HomePageState extends State<HomePage> {
     setState(() => _loading = true);
 
     try {
-      final users =
-          await widget.client.send('/ip/hotspot/user/print');
-      final profiles =
-          await widget.client.send('/ip/hotspot/user/profile/print');
-      final vlans =
-          await widget.client.send('/interface/vlan/print');
+      // التعديل: استخدم send مش execute
+      final users = await widget.client.send('/ip/hotspot/user/print');
+      final profiles = await widget.client.send('/ip/hotspot/user/profile/print');
+      final vlans = await widget.client.send('/interface/vlan/print');
 
       if (!mounted) return;
 
@@ -237,7 +240,7 @@ class _HomePageState extends State<HomePage> {
         _vlans = vlans;
       });
     } catch (e) {
-      _showMessage('حدث خطأ أثناء تحميل البيانات');
+      _showMessage('حدث خطأ أثناء تحميل البيانات: $e');
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -275,12 +278,11 @@ class _HomePageState extends State<HomePage> {
 
     try {
       for (int i = 0; i < count; i++) {
-        final user =
-            'card${DateTime.now().millisecondsSinceEpoch}_$i';
+        final user = 'card${DateTime.now().millisecondsSinceEpoch}_$i';
 
         await widget.client.send(
           '/ip/hotspot/user/add',
-          {
+          params: { // التعديل: ضيف params:
             'name': user,
             'password': user,
             'profile': profile,
@@ -294,10 +296,10 @@ class _HomePageState extends State<HomePage> {
         });
       }
 
-      _showMessage('تم إنشاء الكروت بنجاح');
+      _showMessage('تم إنشاء $count كرت بنجاح');
       await _loadAll();
     } catch (e) {
-      _showMessage('حدث خطأ أثناء إنشاء الكروت');
+      _showMessage('حدث خطأ أثناء إنشاء الكروت: $e');
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -327,12 +329,12 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loading ? null : _loadAll,
+            onPressed: _loading? null : _loadAll,
           ),
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+         ? const Center(child: CircularProgressIndicator())
           : pages[_index],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
@@ -402,23 +404,23 @@ class _HomePageState extends State<HomePage> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton.icon(
-              onPressed: _loading ? null : _createCards,
+              onPressed: _loading? null : _createCards,
               icon: const Icon(Icons.add),
               label: const Text('إنشاء الكروت'),
             ),
           ),
           const SizedBox(height: 25),
-          if (_createdCards.isNotEmpty) ...[
+          if (_createdCards.isNotEmpty)...[
             const Text(
               'الكروت التي تم إنشاؤها',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 10),
-            ..._createdCards.map(
+           ..._createdCards.map(
               (card) => Card(
                 child: ListTile(
                   leading: const Icon(Icons.person),
-                  title: Text(card['user'] ?? ''),
+                  title: Text(card['user']?? ''),
                   subtitle: Text(
                     'كلمة المرور: ${card['pass']} | الباقة: ${card['profile']}',
                   ),
@@ -441,10 +443,10 @@ class _HomePageState extends State<HomePage> {
     return ListView.builder(
       itemCount: _users.length,
       itemBuilder: (context, index) {
-        final user = _users[index] as Map;
+        final user = _users[index];
 
-        final name = user['name']?.toString() ?? '';
-        final profile = user['profile']?.toString() ?? '-';
+        final name = user['name']?.toString()?? '';
+        final profile = user['profile']?.toString()?? '-';
 
         return Card(
           margin: const EdgeInsets.symmetric(
@@ -457,6 +459,13 @@ class _HomePageState extends State<HomePage> {
             ),
             title: Text(name),
             subtitle: Text('الباقة: $profile'),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () async {
+                await widget.client.send('/ip/hotspot/user/remove', params: {'.id': user['.id']});
+                _loadAll();
+              },
+            ),
           ),
         );
       },
@@ -473,7 +482,7 @@ class _HomePageState extends State<HomePage> {
     return ListView.builder(
       itemCount: _vlans.length,
       itemBuilder: (context, index) {
-        final vlan = _vlans[index] as Map;
+        final vlan = _vlans[index];
 
         return Card(
           margin: const EdgeInsets.all(8),
@@ -482,9 +491,9 @@ class _HomePageState extends State<HomePage> {
               Icons.lan,
               color: Colors.indigo,
             ),
-            title: Text(vlan['name']?.toString() ?? ''),
+            title: Text(vlan['name']?.toString()?? ''),
             subtitle: Text(
-              'VLAN ID: ${vlan['vlan-id']?.toString() ?? ''}',
+              'VLAN ID: ${vlan['vlan-id']?.toString()?? ''}',
             ),
           ),
         );
@@ -502,7 +511,7 @@ class _HomePageState extends State<HomePage> {
     return ListView.builder(
       itemCount: _profiles.length,
       itemBuilder: (context, index) {
-        final profile = _profiles[index] as Map;
+        final profile = _profiles[index];
 
         return Card(
           margin: const EdgeInsets.all(8),
@@ -511,7 +520,8 @@ class _HomePageState extends State<HomePage> {
               Icons.speed,
               color: Colors.green,
             ),
-            title: Text(profile['name']?.toString() ?? ''),
+            title: Text(profile['name']?.toString()?? ''),
+            subtitle: Text('السرعة: ${profile['rate-limit']?.toString()?? 'افتراضي'}'),
           ),
         );
       },
