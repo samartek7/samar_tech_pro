@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:routeros_api/routeros_api.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 void main() {
   runApp(const SamarTechApp());
@@ -58,7 +61,6 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      // التعديل: استخدم named parameters
       final client = RouterOSClient(
         host: _ip.text.trim(),
         user: _user.text.trim(),
@@ -124,59 +126,18 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.router,
-                      size: 70,
-                      color: Colors.indigo,
-                    ),
+                    const Icon(Icons.router, size: 70, color: Colors.indigo),
                     const SizedBox(height: 10),
-                    const Text(
-                      'سمر تك برو',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    const Text('سمر تك برو', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                     const Text('إدارة شبكات MikroTik'),
                     const SizedBox(height: 25),
-                    TextField(
-                      controller: _ip,
-                      decoration: const InputDecoration(
-                        labelText: 'IP المايكروتك',
-                        prefixIcon: Icon(Icons.router),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
+                    TextField(controller: _ip, decoration: const InputDecoration(labelText: 'IP المايكروتك', prefixIcon: Icon(Icons.router), border: OutlineInputBorder())),
                     const SizedBox(height: 12),
-                    TextField(
-                      controller: _user,
-                      decoration: const InputDecoration(
-                        labelText: 'اسم المستخدم',
-                        prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
+                    TextField(controller: _user, decoration: const InputDecoration(labelText: 'اسم المستخدم', prefixIcon: Icon(Icons.person), border: OutlineInputBorder())),
                     const SizedBox(height: 12),
-                    TextField(
-                      controller: _pass,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'كلمة المرور',
-                        prefixIcon: Icon(Icons.lock),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
+                    TextField(controller: _pass, obscureText: true, decoration: const InputDecoration(labelText: 'كلمة المرور', prefixIcon: Icon(Icons.lock), border: OutlineInputBorder())),
                     const SizedBox(height: 20),
-                    _loading
-                       ? const CircularProgressIndicator()
-                        : SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: _connect,
-                              child: const Text('اتصال', style: TextStyle(fontSize: 18)),
-                            ),
-                          ),
+                    _loading? const CircularProgressIndicator() : SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: _connect, child: const Text('اتصال', style: TextStyle(fontSize: 18)))),
                     const SizedBox(height: 10),
                     Text(_msg, style: const TextStyle(color: Colors.red)),
                   ],
@@ -194,11 +155,7 @@ class _LoginPageState extends State<LoginPage> {
 
 class HomePage extends StatefulWidget {
   final RouterOSClient client;
-
-  const HomePage({
-    super.key,
-    required this.client,
-  });
+  const HomePage({super.key, required this.client});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -214,7 +171,6 @@ class _HomePageState extends State<HomePage> {
 
   final TextEditingController _cardCount = TextEditingController();
   final TextEditingController _cardProfile = TextEditingController();
-
   final List<Map<String, String>> _createdCards = [];
 
   @override
@@ -225,15 +181,13 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadAll() async {
     setState(() => _loading = true);
-
     try {
-      // التعديل: استخدم send مش execute
-      final users = await widget.client.send('/ip/hotspot/user/print');
-      final profiles = await widget.client.send('/ip/hotspot/user/profile/print');
-      final vlans = await widget.client.send('/interface/vlan/print');
+      // التعديل: استخدمنا execute
+      final users = await widget.client.execute('/ip/hotspot/user/print');
+      final profiles = await widget.client.execute('/ip/hotspot/user/profile/print');
+      final vlans = await widget.client.execute('/interface/vlan/print');
 
       if (!mounted) return;
-
       setState(() {
         _users = users;
         _profiles = profiles;
@@ -242,69 +196,61 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       _showMessage('حدث خطأ أثناء تحميل البيانات: $e');
     } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      if (mounted) { setState(() => _loading = false); }
     }
   }
 
   void _showMessage(String message) {
     if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _createCards() async {
     final count = int.tryParse(_cardCount.text);
-
-    if (count == null || count <= 0) {
-      _showMessage('أدخل عددًا صحيحًا للكروت');
-      return;
-    }
-
+    if (count == null || count <= 0) { _showMessage('أدخل عددًا صحيحًا للكروت'); return; }
     final profile = _cardProfile.text.trim();
+    if (profile.isEmpty) { _showMessage('أدخل اسم الباقة'); return; }
 
-    if (profile.isEmpty) {
-      _showMessage('أدخل اسم الباقة');
-      return;
-    }
-
-    setState(() {
-      _loading = true;
-      _createdCards.clear();
-    });
+    setState(() { _loading = true; _createdCards.clear(); });
 
     try {
       for (int i = 0; i < count; i++) {
         final user = 'card${DateTime.now().millisecondsSinceEpoch}_$i';
-
-        await widget.client.send(
-          '/ip/hotspot/user/add',
-          params: { // التعديل: ضيف params:
-            'name': user,
-            'password': user,
-            'profile': profile,
-          },
-        );
-
-        _createdCards.add({
-          'user': user,
-          'pass': user,
+        await widget.client.execute('/ip/hotspot/user/add', {
+          'name': user,
+          'password': user,
           'profile': profile,
         });
+        _createdCards.add({'user': user, 'pass': user, 'profile': profile});
       }
-
       _showMessage('تم إنشاء $count كرت بنجاح');
       await _loadAll();
     } catch (e) {
       _showMessage('حدث خطأ أثناء إنشاء الكروت: $e');
     } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      if (mounted) { setState(() => _loading = false); }
     }
+  }
+
+  Future<void> _printCards() async {
+    if(_createdCards.isEmpty) return;
+    final pdf = pw.Document();
+    pdf.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      build: (pw.Context context) => [
+        pw.Text('كروت سمر تك', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 20),
+        pw.Wrap(spacing: 10, runSpacing: 10, children: _createdCards.map((card) => pw.Container(
+          width: 200, height: 100, decoration: pw.BoxDecoration(border: pw.Border.all()),
+          child: pw.Column(mainAxisAlignment: pw.MainAxisAlignment.center, children: [
+            pw.Text('اليوزر: ${card['user']}'),
+            pw.Text('الباسورد: ${card['pass']}'),
+            pw.Text('الباقة: ${card['profile']}'),
+          ]),
+        )).toList()),
+      ]
+    ));
+    await Printing.layoutPdf(onLayout: (format) => pdf.save());
   }
 
   @override
@@ -316,215 +262,69 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      _buildCardsPage(),
-      _buildUsersPage(),
-      _buildVlanPage(),
-      _buildProfilesPage(),
-    ];
-
+    final pages = [_buildCardsPage(), _buildUsersPage(), _buildVlanPage(), _buildProfilesPage()];
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('سمر تك برو'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loading? null : _loadAll,
-          ),
-        ],
-      ),
-      body: _loading
-         ? const Center(child: CircularProgressIndicator())
-          : pages[_index],
+      appBar: AppBar(title: const Text('سمر تك برو'), actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _loading? null : _loadAll)]),
+      body: _loading? const Center(child: CircularProgressIndicator()) : pages[_index],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (index) {
-          setState(() => _index = index);
-        },
+        onDestinationSelected: (index) { setState(() => _index = index); },
         destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.credit_card),
-            label: 'الكروت',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people),
-            label: 'المستخدمين',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.lan),
-            label: 'VLAN',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.speed),
-            label: 'الباقات',
-          ),
+          NavigationDestination(icon: Icon(Icons.credit_card), label: 'الكروت'),
+          NavigationDestination(icon: Icon(Icons.people), label: 'المستخدمين'),
+          NavigationDestination(icon: Icon(Icons.lan), label: 'VLAN'),
+          NavigationDestination(icon: Icon(Icons.speed), label: 'الباقات'),
         ],
       ),
     );
   }
 
   Widget _buildCardsPage() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const Icon(
-            Icons.credit_card,
-            size: 70,
-            color: Colors.indigo,
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'إنشاء كروت الهوتسبوت',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 25),
-          TextField(
-            controller: _cardCount,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'عدد الكروت',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 15),
-          TextField(
-            controller: _cardProfile,
-            decoration: const InputDecoration(
-              labelText: 'اسم الباقة',
-              hintText: 'مثال: 2M',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton.icon(
-              onPressed: _loading? null : _createCards,
-              icon: const Icon(Icons.add),
-              label: const Text('إنشاء الكروت'),
-            ),
-          ),
-          const SizedBox(height: 25),
-          if (_createdCards.isNotEmpty)...[
-            const Text(
-              'الكروت التي تم إنشاؤها',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 10),
-           ..._createdCards.map(
-              (card) => Card(
-                child: ListTile(
-                  leading: const Icon(Icons.person),
-                  title: Text(card['user']?? ''),
-                  subtitle: Text(
-                    'كلمة المرور: ${card['pass']} | الباقة: ${card['profile']}',
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
+    return SingleChildScrollView(padding: const EdgeInsets.all(20), child: Column(children: [
+      const Icon(Icons.credit_card, size: 70, color: Colors.indigo), const SizedBox(height: 10),
+      const Text('إنشاء كروت الهوتسبوت', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)), const SizedBox(height: 25),
+      TextField(controller: _cardCount, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'عدد الكروت', border: OutlineInputBorder())),
+      const SizedBox(height: 15),
+      TextField(controller: _cardProfile, decoration: const InputDecoration(labelText: 'اسم الباقة', hintText: 'مثال: 2M', border: OutlineInputBorder())),
+      const SizedBox(height: 20),
+      Row(children: [
+        Expanded(child: ElevatedButton.icon(onPressed: _loading? null : _createCards, icon: const Icon(Icons.add), label: const Text('إنشاء'))),
+        const SizedBox(width: 10),
+        Expanded(child: ElevatedButton.icon(onPressed: _createdCards.isEmpty? null : _printCards, icon: const Icon(Icons.print), label: const Text('طباعة PDF'))),
+      ]),
+      const SizedBox(height: 25),
+      if (_createdCards.isNotEmpty)...[
+        const Text('الكروت التي تم إنشاؤها', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), const SizedBox(height: 10),
+       ..._createdCards.map((card) => Card(child: ListTile(leading: const Icon(Icons.person), title: Text(card['user']?? ''), subtitle: Text('كلمة المرور: ${card['pass']} | الباقة: ${card['profile']}')))),
+      ],
+    ]));
   }
 
   Widget _buildUsersPage() {
-    if (_users.isEmpty) {
-      return const Center(
-        child: Text('لا يوجد مستخدمون أو لم يتم تحميل البيانات'),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: _users.length,
-      itemBuilder: (context, index) {
-        final user = _users[index];
-
-        final name = user['name']?.toString()?? '';
-        final profile = user['profile']?.toString()?? '-';
-
-        return Card(
-          margin: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 5,
-          ),
-          child: ListTile(
-            leading: const CircleAvatar(
-              child: Icon(Icons.person),
-            ),
-            title: Text(name),
-            subtitle: Text('الباقة: $profile'),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () async {
-                await widget.client.send('/ip/hotspot/user/remove', params: {'.id': user['.id']});
-                _loadAll();
-              },
-            ),
-          ),
-        );
-      },
-    );
+    if (_users.isEmpty) { return const Center(child: Text('لا يوجد مستخدمون')); }
+    return ListView.builder(itemCount: _users.length, itemBuilder: (context, index) {
+      final user = _users[index];
+      return Card(margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), child: ListTile(
+        leading: const CircleAvatar(child: Icon(Icons.person)),
+        title: Text(user['name']?.toString()?? ''),
+        subtitle: Text('الباقة: ${user['profile']?.toString()?? '-'}'),
+      ));
+    });
   }
 
   Widget _buildVlanPage() {
-    if (_vlans.isEmpty) {
-      return const Center(
-        child: Text('لا توجد شبكات VLAN'),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: _vlans.length,
-      itemBuilder: (context, index) {
-        final vlan = _vlans[index];
-
-        return Card(
-          margin: const EdgeInsets.all(8),
-          child: ListTile(
-            leading: const Icon(
-              Icons.lan,
-              color: Colors.indigo,
-            ),
-            title: Text(vlan['name']?.toString()?? ''),
-            subtitle: Text(
-              'VLAN ID: ${vlan['vlan-id']?.toString()?? ''}',
-            ),
-          ),
-        );
-      },
-    );
+    if (_vlans.isEmpty) { return const Center(child: Text('لا توجد شبكات VLAN')); }
+    return ListView.builder(itemCount: _vlans.length, itemBuilder: (context, index) {
+      final vlan = _vlans[index];
+      return Card(margin: const EdgeInsets.all(8), child: ListTile(leading: const Icon(Icons.lan, color: Colors.indigo), title: Text(vlan['name']?.toString()?? ''), subtitle: Text('VLAN ID: ${vlan['vlan-id']?.toString()?? ''}')));
+    });
   }
 
   Widget _buildProfilesPage() {
-    if (_profiles.isEmpty) {
-      return const Center(
-        child: Text('لا توجد باقات أو لم يتم تحميلها'),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: _profiles.length,
-      itemBuilder: (context, index) {
-        final profile = _profiles[index];
-
-        return Card(
-          margin: const EdgeInsets.all(8),
-          child: ListTile(
-            leading: const Icon(
-              Icons.speed,
-              color: Colors.green,
-            ),
-            title: Text(profile['name']?.toString()?? ''),
-            subtitle: Text('السرعة: ${profile['rate-limit']?.toString()?? 'افتراضي'}'),
-          ),
-        );
-      },
-    );
+    if (_profiles.isEmpty) { return const Center(child: Text('لا توجد باقات')); }
+    return ListView.builder(itemCount: _profiles.length, itemBuilder: (context, index) {
+      final profile = _profiles[index];
+      return Card(margin: const EdgeInsets.all(8), child: ListTile(leading: const Icon(Icons.speed, color: Colors.green), title: Text(profile['name']?.toString()?? ''), subtitle: Text('السرعة: ${profile['rate-limit']?.toString()?? 'افتراضي'}')));
+    });
   }
 }
