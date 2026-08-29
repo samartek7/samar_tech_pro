@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  routeros_api: ^2.1.0
+  routeros_api: ^0.1.4
   pdf: ^3.10.0
   printing: ^5.12.0
 
